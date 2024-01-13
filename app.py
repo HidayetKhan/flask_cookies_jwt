@@ -33,30 +33,40 @@ class UserRegistration(Resource):
         db.session.commit()
         return jsonify({'message':'new user created sucssefully'}),200
 
+from flask_jwt_extended import create_access_token, set_access_cookies
 
 class UserLogin(Resource):
     def post(self):
-        data=request.get_json()
-        username=data['username']
-        password=data['password']
+        try:
+            data = request.get_json()
+            username = data.get('username')
+            password = data.get('password')
 
-        user=User.query.filter_by(username=username).first()
-        print(user)
-        if user and user.password==password:
-            access_token=create_access_token(identity=user.id,expires_delta=timedelta(hours=1))
-            response=jsonify({'login':True})
-            set_access_cookies(response,access_token)
-            print(response)
-            return response
-        else:
-            return jsonify({'login':False,'message':'invalid credential'}),401
+            user = User.query.filter_by(username=username).first()
 
+            if user and user.password == password:
+                access_token = create_access_token(identity=user.id, expires_delta=timedelta(hours=1))
+                response = jsonify({'login': True})
+                set_access_cookies(response, access_token)
+                return response, 200
+            else:
+                return jsonify({'login': False, 'message': 'Invalid credentials'}), 401
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
 
 class UserProtected(Resource):
     @jwt_required()
     def get(self):
-        curent_user=get_jwt_identity()
-        return jsonify({'message':f'hello {curent_user}your resourse are protected'}),200
+        try:
+            current_user = get_jwt_identity()
+            response_data = {'message': f'Hello {current_user}, your resource is protected'}
+            return jsonify(response_data), 200
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
 
 
 api.add_resource(UserRegistration,'/register')
